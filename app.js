@@ -28,6 +28,7 @@ const photosEl = $('.photos');
 const infoEl = $('.info');
 const startBtn = $('.start');
 const fileInput = $('.file');
+const resetBtn = $('.reset');
 const overlay = $('.overlay');
 const sheet = $('.sheet');
 
@@ -106,6 +107,7 @@ const db = (() => {
     all: () => safe(run('readonly', s => s.getAll()), []),
     put: rec => safe(run('readwrite', s => s.put(rec))),
     del: id => safe(run('readwrite', s => s.delete(id))),
+    clear: () => safe(run('readwrite', s => s.clear())),
   };
 })();
 
@@ -150,6 +152,16 @@ async function addFiles(files) {
   if (skipped > 0) notes.push(`${skipped} ${skipped === 1 ? 'Bild' : 'Bilder'} über dem Maximum von ${MAX_PAIRS} ignoriert`);
   if (failed > 0) notes.push(`${failed} ${failed === 1 ? 'Bild konnte' : 'Bilder konnten'} nicht geladen werden`);
   if (notes.length) infoEl.textContent = notes.join(' · ');
+}
+
+function replaceAllImages() {
+  if (busy) return;
+  // Picker muss synchron im Tap-Handler geöffnet werden (iOS), DB wird danach geleert
+  images.forEach(im => URL.revokeObjectURL(im.url));
+  images = [];
+  renderPhotos();
+  fileInput.click();
+  db.clear();
 }
 
 async function removeImage(id) {
@@ -252,11 +264,11 @@ function openMenu() {
   sheet.innerHTML = `
     <div class="menu-list">
       <button data-a="again">Neu mischen</button>
-      <button data-a="photos">Bilder ändern</button>
+      <button data-a="end">Spiel beenden</button>
       <button data-a="close">Weiterspielen</button>
     </div>`;
   $('[data-a="again"]', sheet).onclick = () => { closeSheet(); newGame(); };
-  $('[data-a="photos"]', sheet).onclick = () => { closeSheet(); toSetup(); };
+  $('[data-a="end"]', sheet).onclick = () => { closeSheet(); toSetup(); };
   $('[data-a="close"]', sheet).onclick = closeSheet;
   showSheet();
 }
@@ -269,10 +281,10 @@ function showResult() {
     <h2></h2>
     <div class="result">${a.score} : ${b.score}</div>
     <button class="primary" data-a="again">Nochmal</button>
-    <button class="text-btn" data-a="photos">Neue Bilder</button>`;
+    <button class="text-btn" data-a="end">Spiel beenden</button>`;
   $('h2', sheet).textContent = winner < 0 ? 'Unentschieden!' : `${state.players[winner].name} gewinnt!`;
   $('[data-a="again"]', sheet).onclick = () => { closeSheet(); newGame(); };
-  $('[data-a="photos"]', sheet).onclick = () => { closeSheet(); toSetup(); };
+  $('[data-a="end"]', sheet).onclick = () => { closeSheet(); toSetup(); };
   overlay.dataset.locked = '1';
   showSheet(true);
 }
@@ -306,6 +318,7 @@ function renderPhotos() {
   else if (n < MIN_PAIRS) infoEl.textContent = `${n} Bilder · noch ${MIN_PAIRS - n} ${MIN_PAIRS - n === 1 ? 'fehlt' : 'fehlen'}`;
   else infoEl.textContent = `${n} Paare · ${n * 2} Karten`;
   startBtn.disabled = n < MIN_PAIRS;
+  resetBtn.hidden = n === 0;
 }
 
 fileInput.addEventListener('change', async () => {
@@ -316,6 +329,8 @@ fileInput.addEventListener('change', async () => {
   startBtn.disabled = true;
   try { await addFiles(files); } finally { busy = false; startBtn.disabled = images.length < MIN_PAIRS; }
 });
+
+resetBtn.addEventListener('click', replaceAllImages);
 
 startBtn.addEventListener('click', () => {
   if (images.length >= MIN_PAIRS && !busy) newGame();
