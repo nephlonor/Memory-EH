@@ -1,6 +1,6 @@
 # Memory-EH
 
-Memory für Elisa & Hanna – mit eigenen Fotos (12–32 Paare), hochformat-optimiert.
+Memory für Elisa & Hanna – mit eigenen Fotos (12–36 Paare), hochformat-optimiert.
 
 **Spielen:** https://nephlonor.github.io/Memory-EH/
 
