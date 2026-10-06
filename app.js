@@ -1,7 +1,7 @@
 'use strict';
 
 const MIN_PAIRS = 12;
-const MAX_PAIRS = 32;
+const MAX_PAIRS = 36;
 const THUMB_SIZE = 480;
 const MISS_DELAY = 1200;
 const STORE_KEY = 'memory-eh:v1';
