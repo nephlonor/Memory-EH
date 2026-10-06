@@ -2,7 +2,7 @@
 
 Memory für Elisa & Hanna – mit eigenen Fotos (12–32 Paare), hochformat-optimiert.
 
-**Spielen:** https://nephlonor.github.io/memory-eh/
+**Spielen:** https://nephlonor.github.io/Memory-EH/
 
 - Fotos auswählen → Bilder bleiben im Browser gespeichert (Tippen auf ein Bild entfernt es)
 - Name antippen zum Ändern, Farbpunkt antippen für eine andere Farbe
