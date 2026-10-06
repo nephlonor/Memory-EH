@@ -50,6 +50,9 @@ let images = [];        // [{ id, blob, url, added }]
 let open = [];          // indices of currently flipped, unmatched cards
 let missTimer = null;
 let busy = false;
+let lifting = false;
+let missPending = false;
+let lastTap = { i: -1, t: 0 };
 
 function save() {
   try {
@@ -383,7 +386,7 @@ function startGame() {
     const card = document.createElement('button');
     card.className = 'card';
     card.dataset.i = i;
-    card.innerHTML = `<div class="inner"><div class="face back"></div><div class="face front"><img alt="" draggable="false" src="${urls.get(id)}"></div></div>`;
+    card.innerHTML = `<div class="shade"></div><div class="inner"><div class="face back"></div><div class="face front"><img alt="" draggable="false" src="${urls.get(id)}"></div></div>`;
     if (state.owner[i] >= 0) card.dataset.owner = state.owner[i];
     grid.append(card);
   });
@@ -413,6 +416,7 @@ const cardEl = i => grid.children[i];
 function resolveMiss() {
   clearTimeout(missTimer);
   missTimer = null;
+  missPending = false;
   open.forEach(i => cardEl(i).classList.remove('open'));
   open = [];
   state.turn = 1 - state.turn;
@@ -420,12 +424,76 @@ function resolveMiss() {
   save();
 }
 
+/* Zweimal auf ein aufgedecktes Bild tippen: Kaertchen wird hochgehoben (3x gross, 2 s), faellt dann zurueck */
+const LIFT_SCALE = 3;
+const LIFT_HOLD = 2000;
+
+function lift(i) {
+  const card = cardEl(i);
+  if (!card || !card.animate) return;
+  lifting = true;
+
+  const r = card.getBoundingClientRect();
+  const vw = document.documentElement.clientWidth;
+  const vh = document.documentElement.clientHeight;
+  const sc = Math.min(LIFT_SCALE, (Math.min(vw, vh) * 0.9) / r.width);
+  const tx = vw / 2 - (r.left + r.width / 2);
+  const ty = vh / 2 - (r.top + r.height / 2);
+  const T = (x, y, s, rot) => `translate(${x}px, ${y}px) scale(${s}) rotate(${rot}deg)`;
+  const gravity = 'cubic-bezier(.55, 0, 1, .45)';   // beschleunigt wie ein fallender Koerper
+  const rise = 'cubic-bezier(0, 0, .35, 1)';        // verlangsamt am Scheitelpunkt
+
+  // d = Dauer des Abschnitts (ms), der bei der vorherigen Position beginnt und hier endet
+  const steps = [
+    { d: 0,    t: T(0, 0, 1, 0),                    sh: 0,   up: 0 },
+    { d: 300,  t: T(tx, ty, sc * 1.07, -4),         sh: .38, up: 1, e: 'cubic-bezier(.2, .75, .3, 1)' },  // hochschwingen
+    { d: 180,  t: T(tx, ty, sc, 1.2),               sh: .34, up: 1, e: 'ease-in-out' },                    // einpendeln
+    { d: 1000, t: T(tx, ty, sc * 1.015, -1.1),      sh: .36, up: 1, e: 'ease-in-out' },                    // schweben
+    { d: 1000, t: T(tx, ty, sc, .8),                sh: .34, up: 1, e: 'ease-in-out' },
+    { d: 440,  t: T(0, 0, 1, -2.2),                 sh: .45, up: 0, e: gravity },                           // fallen
+    { d: 160,  t: T(0, 0, 1.13, 1.4),               sh: .22, up: .5, e: rise },                             // 1. Aufprall-Huepfer
+    { d: 150,  t: T(0, 0, 1, -.7),                  sh: .42, up: 0, e: gravity },
+    { d: 85,   t: T(0, 0, 1.035, .4),               sh: .3,  up: .2, e: rise },                             // 2. Huepfer
+    { d: 80,   t: T(0, 0, 1, 0),                    sh: .35, up: 0, e: gravity },
+  ];
+  const total = steps.reduce((a, s) => a + s.d, 0);
+  let at = 0;
+  const frames = steps.map((s, k) => {
+    at += s.d;
+    return { offset: at / total, easing: steps[k + 1]?.e || 'linear', transform: s.t, sh: s.sh, up: s.up };
+  });
+
+  card.classList.add('lifted');
+  const shade = $('.shade', card);
+  const done = () => {
+    card.classList.remove('lifted');
+    lifting = false;
+    if (missPending) resolveMiss();
+  };
+  const anim = card.animate(
+    frames.map(f => ({ offset: f.offset, easing: f.easing, transform: f.transform })),
+    { duration: total, easing: 'linear' }
+  );
+  shade.animate(
+    frames.map(f => ({ offset: f.offset, easing: f.easing, opacity: f.sh, transform: `translateY(${f.up * 9}%)` })),
+    { duration: total, easing: 'linear' }
+  );
+  anim.onfinish = done;
+  anim.oncancel = done;
+}
+
 grid.addEventListener('click', e => {
   const card = e.target.closest('.card');
   if (!card) return;
-  if (missTimer) { resolveMiss(); return; }
+  if (lifting) return;
   const i = Number(card.dataset.i);
-  if (state.owner[i] >= 0 || open.includes(i)) return;
+  const now = performance.now();
+  const dbl = lastTap.i === i && now - lastTap.t < 400;
+  lastTap = { i, t: now };
+  const faceUp = state.owner[i] >= 0 || open.includes(i);
+  if (dbl && faceUp) { lastTap = { i: -1, t: 0 }; lift(i); return; }
+  if (missTimer) { resolveMiss(); return; }
+  if (faceUp) return;
 
   open.push(i);
   card.classList.add('open');
@@ -447,7 +515,7 @@ grid.addEventListener('click', e => {
     save();
     if (state.owner.every(o => o >= 0)) setTimeout(showResult, 900);
   } else {
-    missTimer = setTimeout(resolveMiss, MISS_DELAY);
+    missTimer = setTimeout(() => (lifting ? (missPending = true) : resolveMiss()), MISS_DELAY);
   }
 });
 

@@ -92,6 +92,13 @@ button {
 .player[data-p="0"] { --pc: var(--p0); }
 .player[data-p="1"] { --pc: var(--p1); }
 
+/* rechter Spieler gespiegelt: Farbe + Name aussen, Score neben dem Menue */
+.player[data-p="1"] {
+  flex-direction: row-reverse;
+  padding: 0 12px 0 14px;
+}
+.player[data-p="1"] .name { text-align: right; }
+
 .dot {
   flex: none;
   width: 22px;
@@ -321,6 +328,23 @@ h1 {
 
 .back {
   background: var(--back);
+}
+
+.shade {
+  position: absolute;
+  inset: 8%;
+  border-radius: calc(var(--size, 60px) * .16);
+  background: #000;
+  opacity: 0;
+  filter: blur(calc(var(--size, 60px) * .1));
+  pointer-events: none;
+}
+
+.card.lifted {
+  position: relative;
+  z-index: 20;
+  pointer-events: none;
+  will-change: transform;
 }
 
 .front {
