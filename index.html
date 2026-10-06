@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Memory</title>
+  <meta name="theme-color" content="#fdeef3">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Memory">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="icon" type="image/png" href="icon-180.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app" data-screen="setup">
+    <header class="players">
+      <div class="player" data-p="0">
+        <button class="dot" aria-label="Farbe wählen"></button>
+        <span class="name" spellcheck="false" enterkeyhint="done"></span>
+        <span class="score">0</span>
+      </div>
+      <button class="menu-btn" aria-label="Menü"><span></span><span></span><span></span></button>
+      <div class="player" data-p="1">
+        <button class="dot" aria-label="Farbe wählen"></button>
+        <span class="name" spellcheck="false" enterkeyhint="done"></span>
+        <span class="score">0</span>
+      </div>
+    </header>
+
+    <main class="setup">
+      <h1>Memory</h1>
+      <div class="photos"></div>
+      <p class="info"></p>
+      <button class="primary start" disabled>Spielen</button>
+      <input class="file" type="file" accept="image/*" multiple hidden>
+    </main>
+
+    <main class="game">
+      <div class="board"><div class="grid"></div></div>
+    </main>
+  </div>
+
+  <div class="overlay" hidden>
+    <div class="sheet"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
