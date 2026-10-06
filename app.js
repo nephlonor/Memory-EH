@@ -6,16 +6,17 @@ const THUMB_SIZE = 480;
 const MISS_DELAY = 1200;
 const STORE_KEY = 'memory-eh:v1';
 
+// 36 Farbtöne rund um den Farbkreis (OKLCH, gleiche Helligkeit/Sättigung)
 const PALETTE = [
-  '#f08bb0', // rosa
-  '#f4978e', // koralle
-  '#f6b26b', // pfirsich
-  '#e5c04a', // gelb
-  '#7cc48a', // grün
-  '#5ec4b6', // mint
-  '#6fa8ec', // blau
-  '#a98bea', // lila
+  '#e8809a', '#ea808a', '#eb827b', '#ea856c', '#e8895d', '#e58f51',
+  '#e39849', '#e1a447', '#deb14a', '#d7bc50', '#cac155', '#b6c259',
+  '#9ebf5f', '#86bd67', '#6fbd73', '#58bd81', '#40be90', '#21bfa0',
+  '#08beaf', '#08bcbc', '#09bac9', '#0bb8d6', '#22b5e1', '#3fb1ea',
+  '#56acf0', '#6aa7f4', '#7ca2f6', '#8d9df5', '#9d98f2', '#ab93ed',
+  '#b88fe6', '#c38adc', '#cd87d1', '#d684c5', '#de82b7', '#e380a9',
 ];
+const VIOLET = '#ab93ed';
+const ORANGE = '#e58f51';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -34,8 +35,8 @@ const sheet = $('.sheet');
 
 const state = {
   players: [
-    { name: 'Elisa', color: PALETTE[0], score: 0 },
-    { name: 'Hanna', color: PALETTE[6], score: 0 },
+    { name: 'Elisa', color: VIOLET, score: 0 },
+    { name: 'Hanna', color: ORANGE, score: 0 },
   ],
   turn: 0,
   starter: 0,
@@ -69,7 +70,7 @@ function load() {
     if (Array.isArray(s.players) && s.players.length === 2) {
       s.players.forEach((p, i) => {
         if (typeof p.name === 'string' && p.name) state.players[i].name = p.name;
-        if (typeof p.color === 'string') state.players[i].color = p.color;
+        if (PALETTE.includes(p.color)) state.players[i].color = p.color;
         state.players[i].score = Number(p.score) || 0;
       });
     }
