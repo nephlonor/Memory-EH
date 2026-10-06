@@ -52,7 +52,6 @@ let missTimer = null;
 let busy = false;
 let lifting = false;
 let missPending = false;
-let lastTap = { i: -1, t: 0 };
 
 function save() {
   try {
@@ -424,7 +423,7 @@ function resolveMiss() {
   save();
 }
 
-/* Zweimal auf ein aufgedecktes Bild tippen: Kaertchen wird hochgehoben (3x gross, 2 s), faellt dann zurueck */
+/* Erneut auf ein aufgedecktes Bild tippen: Kaertchen wird hochgehoben (3x gross, 2 s), faellt dann zurueck */
 const LIFT_SCALE = 3;
 const LIFT_HOLD = 2000;
 
@@ -487,13 +486,9 @@ grid.addEventListener('click', e => {
   if (!card) return;
   if (lifting) return;
   const i = Number(card.dataset.i);
-  const now = performance.now();
-  const dbl = lastTap.i === i && now - lastTap.t < 400;
-  lastTap = { i, t: now };
-  const faceUp = state.owner[i] >= 0 || open.includes(i);
-  if (dbl && faceUp) { lastTap = { i: -1, t: 0 }; lift(i); return; }
+  // erneutes Tippen auf ein bereits aufgedecktes Kaertchen hebt es hoch
+  if (state.owner[i] >= 0 || open.includes(i)) { lift(i); return; }
   if (missTimer) { resolveMiss(); return; }
-  if (faceUp) return;
 
   open.push(i);
   card.classList.add('open');
