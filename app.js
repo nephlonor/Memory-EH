@@ -2,7 +2,8 @@
 
 const MIN_PAIRS = 12;
 const MAX_PAIRS = 36;
-const THUMB_SIZE = 480;
+const THUMB_SIZE = 480;   // Raster / Vorschau
+const BIG_SIZE = 1280;    // scharfe Ansicht beim Hochheben (3x auf Retina-Display)
 const MISS_DELAY = 1200;
 const STORE_KEY = 'memory-eh:v1';
 
@@ -123,11 +124,16 @@ async function shrink(file) {
     await img.decode();
     const w = img.naturalWidth, h = img.naturalHeight;
     const s = Math.min(w, h);
-    const out = Math.min(THUMB_SIZE, s);
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = out;
-    canvas.getContext('2d').drawImage(img, (w - s) / 2, (h - s) / 2, s, s, 0, 0, out, out);
-    return await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.85));
+    const square = size => {
+      const out = Math.min(size, s);
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = out;
+      canvas.getContext('2d').drawImage(img, (w - s) / 2, (h - s) / 2, s, s, 0, 0, out, out);
+      return new Promise(r => canvas.toBlob(r, 'image/jpeg', size > THUMB_SIZE ? 0.9 : 0.85));
+    };
+    const blob = await square(THUMB_SIZE);
+    const big = s > THUMB_SIZE ? await square(BIG_SIZE) : null;
+    return blob ? { blob, big } : null;
   } catch {
     return null;
   } finally {
@@ -142,11 +148,11 @@ async function addFiles(files) {
   let failed = 0;
   for (let i = 0; i < list.length; i++) {
     infoEl.textContent = `Lade Bild ${i + 1} von ${list.length} …`;
-    const blob = await shrink(list[i]);
-    if (!blob) { failed++; continue; }
-    const rec = { id: uid(), blob, added: Date.now() + i };
+    const res = await shrink(list[i]);
+    if (!res) { failed++; continue; }
+    const rec = { id: uid(), blob: res.blob, big: res.big, added: Date.now() + i };
     await db.put(rec);
-    images.push({ ...rec, url: URL.createObjectURL(blob) });
+    images.push({ ...rec, url: URL.createObjectURL(res.blob) });
     renderPhotos();
   }
   renderPhotos();
@@ -432,6 +438,20 @@ function lift(i) {
   if (!card || !card.animate) return;
   lifting = true;
 
+  // Hochaufloesende Version erst laden, damit das Bild beim Vergroessern scharf ist
+  const imgEl = $('.front img', card);
+  const rec = images.find(im => im.id === state.deck[i]);
+  const thumbSrc = imgEl.src;
+  const bigUrl = rec && rec.big ? URL.createObjectURL(rec.big) : null;
+  if (bigUrl) {
+    imgEl.src = bigUrl;
+    imgEl.decode().catch(() => {}).then(() => runLift(i, card, imgEl, thumbSrc, bigUrl));
+  } else {
+    runLift(i, card, imgEl, thumbSrc, null);
+  }
+}
+
+function runLift(i, card, imgEl, thumbSrc, bigUrl) {
   const r = card.getBoundingClientRect();
   const vw = document.documentElement.clientWidth;
   const vh = document.documentElement.clientHeight;
@@ -465,6 +485,7 @@ function lift(i) {
   card.classList.add('lifted');
   const shade = $('.shade', card);
   const done = () => {
+    if (bigUrl) { imgEl.src = thumbSrc; URL.revokeObjectURL(bigUrl); }
     card.classList.remove('lifted');
     lifting = false;
     if (missPending) resolveMiss();
